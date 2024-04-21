@@ -65,10 +65,12 @@ async def verify_text(query: Chat) -> LLMResponse:
     res = rag_builder.invoke(ollama_client, chroma_client, query.collection_name, query.query)
     #context = ollama_client.embed_service.embed_query(" ".join([doc.page_content for doc in res["source_documents"]]))
     #parsed_result = ollama_client.generate(build_prompt(os.getenv("SYSTEM_PROMPT"), clean_text(res["result"])), [], 'json', False)['response']
+    print(res["result"])
     return LLMResponse(
         query=res["query"],
         #result=ArduinoExperiment(**json.loads(parsed_result.split('"}')[0]+'"}')),
         result=ArduinoExperiment(**json.loads(res["result"])),
+        #result=res["result"],
         source_documents=[
             Sources(
                 metadata=Metadata(
@@ -79,6 +81,24 @@ async def verify_text(query: Chat) -> LLMResponse:
         ],
     )
 
+@app.post("/verify_text_context")
+async def verify_text_context(query: Chat) -> LLMResponse:
+    data_context = chroma_client.get_collection(query.collection_name).query(ollama_client.embed_service.embed_query(query.query), include=["metadatas", "documents"], n_results=1)
+    res = ollama_client.generate(
+        build_prompt(os.getenv("SYSTEM_PROMPT"), query.query), 
+        context = ingester.tokenizer.encode(" ".join([doc for doc in data_context["documents"][0]])).ids)
+    return LLMResponse(
+        query=build_prompt(os.getenv("SYSTEM_PROMPT"), query.query),
+        result=ArduinoExperiment(**json.loads(res["response"])),
+        source_documents=[
+            Sources(
+                metadata=Metadata(
+                    source=src["source"]
+                ),
+            )
+            for src in data_context["metadatas"][0]
+        ],
+    )
 
 @app.post("/ingest_documents")
 async def ingest_documents(file: UploadFile, collection_name: str):

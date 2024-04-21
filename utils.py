@@ -12,33 +12,15 @@ import uuid
 from cleantext import clean
 
 def clean_text(chunk):
-    return clean(chunk,
-    fix_unicode=True,               # fix various unicode errors
-    to_ascii=True,                  # transliterate to closest ASCII representation
-    lower=False,                     # lowercase text
-    no_line_breaks=False,           # fully strip line breaks as opposed to only normalizing them
-    no_urls=False,                  # replace all URLs with a special token
-    no_emails=False,                # replace all email addresses with a special token
-    no_phone_numbers=False,         # replace all phone numbers with a special token
-    no_numbers=False,               # replace all numbers with a special token
-    no_digits=False,                # replace all digits with a special token
-    no_currency_symbols=False,      # replace all currency symbols with a special token
-    no_punct=False,                 # remove punctuations
-    replace_with_punct="",          # instead of removing punctuations you may replace them
-    replace_with_url="<URL>",
-    replace_with_email="<EMAIL>",
-    replace_with_phone_number="<PHONE>",
-    replace_with_number="<NUMBER>",
-    replace_with_digit="0",
-    replace_with_currency_symbol="<CUR>",
-    lang="en"                       # set to 'de' for German special handling
-)
+    return clean(chunk)
 
 def build_prompt(system_prompt, request):
         return """
            {}
         
            {}  
+
+           Keep in mind that you have to give the output in JSON format.
         """.format(
             system_prompt,
             request
@@ -64,6 +46,8 @@ class OllamaClient:
         self.embed_service = Embed(self.ollama_client.embeddings, self.model)
 
     def generate(self, text, context, format='', stream=False):
+        print(text)
+        print(context)
         return self.ollama_client.generate(model=self.model, prompt=text, context=context, format=format, stream=stream)
 
 # class ChromaClient:
@@ -132,7 +116,6 @@ class RAGPipeline:
         self.system_prompt = system_prompt
 
     def invoke(self, ollama_client, chroma_client, chroma_collection_name, prompt):
-        print(build_prompt(self.system_prompt, prompt))
         db_retriever = Chroma(
             client=chroma_client,
             collection_name=chroma_collection_name,
@@ -140,6 +123,6 @@ class RAGPipeline:
         )
         return RetrievalQA.from_chain_type(
                 self.ollama_llm,
-                retriever=db_retriever.as_retriever(),
+                retriever=db_retriever.as_retriever(search_kwargs={"k": 10}),
                 return_source_documents=True,
             ).invoke({"query": build_prompt(self.system_prompt, prompt)})
