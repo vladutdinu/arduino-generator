@@ -18,6 +18,7 @@ class ArduinoExperiment(BaseModel):
     Description: str
     Code: str
     Explanation: str
+    Devices: str
 
 class LLMResponse(BaseModel):
     query: str

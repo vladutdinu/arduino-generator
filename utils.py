@@ -42,12 +42,10 @@ class Embed(Embeddings):
 class OllamaClient:
     def __init__(self, host, model):
         self.ollama_client = ollama.Client(host)
-        self.model = model
+        self.model = model  
         self.embed_service = Embed(self.ollama_client.embeddings, self.model)
 
     def generate(self, text, context, format='', stream=False):
-        print(text)
-        print(context)
         return self.ollama_client.generate(model=self.model, prompt=text, context=context, format=format, stream=stream)
 
 # class ChromaClient:
